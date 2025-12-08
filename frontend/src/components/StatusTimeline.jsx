@@ -13,9 +13,11 @@ export default function StatusTimeline({ history = [] }) {
     closed: 'Closed'
   };
 
+  const API_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
+
   return (
     <div className="mt-6">
-      <h3 className="text-lg font-semibold mb-4">Status History</h3>
+      <h3 className="text-lg font-semibold mb-4">Activity Timeline</h3>
       <div className="space-y-4">
         {history.map((entry, index) => (
           <div key={index} className="flex items-start gap-4">
@@ -29,6 +31,24 @@ export default function StatusTimeline({ history = [] }) {
               </div>
               {entry.note && (
                 <p className="text-sm text-gray-600 mt-1">{entry.note}</p>
+              )}
+              {entry.status_description && (
+                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Work Performed:</p>
+                  <p className="text-sm text-gray-600">{entry.status_description}</p>
+                </div>
+              )}
+              {entry.status_images && entry.status_images.length > 0 && (
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {entry.status_images.map((img, idx) => (
+                    <img
+                      key={idx}
+                      src={img.startsWith('http') ? img : `${API_URL}${img}`}
+                      alt={`Status update image ${idx + 1}`}
+                      className="w-full h-32 object-cover rounded"
+                    />
+                  ))}
+                </div>
               )}
             </div>
           </div>

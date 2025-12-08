@@ -6,20 +6,17 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { connectSocket, getSocket } from '../services/socket.js';
 import StatusTimeline from '../components/StatusTimeline.jsx';
 import CommentsList from '../components/CommentsList.jsx';
-
-const statusOptions = [
-  { value: 'acknowledged', label: 'Acknowledge' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'resolved', label: 'Resolve' },
-  { value: 'closed', label: 'Close' }
-];
+import IssueStatusUpdateForm from '../components/IssueStatusUpdateForm.jsx';
+import { useNavigate } from 'react-router-dom';
 
 export default function IssueDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
-  const [newStatus, setNewStatus] = useState('');
+  const [showStatusForm, setShowStatusForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const { data: issue, isLoading } = useQuery({
     queryKey: ['issue', id],
@@ -52,13 +49,18 @@ export default function IssueDetail() {
     }
   });
 
-  const statusMutation = useMutation({
-    mutationFn: (status) => api.patch(`/issues/${id}/status`, { status }),
+  const deleteIssueMutation = useMutation({
+    mutationFn: () => api.delete(`/issues/${id}`),
     onSuccess: () => {
-      setNewStatus('');
-      queryClient.invalidateQueries(['issue', id]);
+      navigate('/dashboard');
     }
   });
+
+  const handleDeleteIssue = () => {
+    if (window.confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
+      deleteIssueMutation.mutate();
+    }
+  };
 
   useEffect(() => {
     const socket = connectSocket();
@@ -91,7 +93,10 @@ export default function IssueDetail() {
 
   const isUpvoted = user && issue.upvotes?.some(u => u._id === user.id || u === user.id);
   const isSubscribed = user && issue.subscribers?.some(s => s._id === user.id || s === user.id);
-  const canChangeStatus = user && (user.role === 'authority' || user.role === 'admin');
+  const isClosed = issue.status === 'closed';
+  const canChangeStatus = user && user.role === 'authority' && !isClosed;
+  const isIssueOwner = user && (issue.author?._id === user.id || issue.author === user.id);
+  const canCloseIssue = isIssueOwner && !isClosed;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -108,7 +113,24 @@ export default function IssueDetail() {
                 {issue.category}
               </span>
               <span>Severity: {issue.severity}/5</span>
-              <span>Status: {issue.status}</span>
+              <span className={`px-2 py-1 rounded ${
+                issue.status === 'closed' 
+                  ? 'bg-gray-200 text-gray-700 font-semibold' 
+                  : issue.status === 'resolved'
+                  ? 'bg-green-100 text-green-800'
+                  : issue.status === 'in_progress'
+                  ? 'bg-yellow-100 text-yellow-800'
+                  : issue.status === 'acknowledged'
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                Status: {issue.status.replace('_', ' ')}
+              </span>
+              {isClosed && (
+                <span className="px-2 py-1 bg-gray-300 text-gray-800 rounded text-xs font-medium">
+                  Issue Closed - No further updates allowed
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -151,34 +173,62 @@ export default function IssueDetail() {
               >
                 🔔 {isSubscribed ? 'Subscribed' : 'Subscribe'}
               </button>
+              {isIssueOwner && (
+                <button
+                  onClick={handleDeleteIssue}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                  disabled={deleteIssueMutation.isLoading}
+                >
+                  🗑️ Delete Issue
+                </button>
+              )}
             </>
           )}
         </div>
 
-        {canChangeStatus && (
+        {canChangeStatus && !showStatusForm && (
           <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-            <label className="block text-sm font-medium mb-2">Change Status</label>
-            <div className="flex gap-2">
-              <select
-                className="input flex-1"
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-              >
-                <option value="">Select status...</option>
-                {statusOptions
-                  .filter(opt => opt.value !== issue.status)
-                  .map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-              </select>
-              <button
-                onClick={() => newStatus && statusMutation.mutate(newStatus)}
-                className="btn-primary"
-                disabled={!newStatus || statusMutation.isLoading}
-              >
-                Update
-              </button>
-            </div>
+            <button
+              onClick={() => setShowStatusForm(true)}
+              className="btn-primary"
+            >
+              Update Status
+            </button>
+          </div>
+        )}
+
+        {canChangeStatus && showStatusForm && (
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+            <IssueStatusUpdateForm
+              issueId={id}
+              currentStatus={issue.status}
+              onSuccess={(data) => {
+                setShowStatusForm(false);
+                queryClient.invalidateQueries(['issue', id]);
+              }}
+              onCancel={() => setShowStatusForm(false)}
+            />
+          </div>
+        )}
+
+        {canCloseIssue && (
+          <div className="mb-4 p-4 bg-green-50 rounded-lg">
+            <p className="text-sm text-gray-700 mb-2">As the issue reporter, you can close this issue when it's resolved.</p>
+            <button
+              onClick={() => {
+                // Simple close - in production, might want a form for this too
+                if (window.confirm('Close this issue?')) {
+                  api.patch(`/issues/${id}/status`, { status: 'closed' })
+                    .then(() => {
+                      queryClient.invalidateQueries(['issue', id]);
+                    })
+                    .catch(err => alert(err.response?.data?.error || 'Failed to close issue'));
+                }
+              }}
+              className="btn-primary"
+            >
+              Close Issue
+            </button>
           </div>
         )}
 

@@ -33,7 +33,7 @@ export const updateUserRole = async (req, res, next) => {
   try {
     const { role } = req.body;
     
-    if (!['user', 'authority', 'admin'].includes(role)) {
+    if (!['user', 'authority'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
 
@@ -59,7 +59,7 @@ export const updateUserRole = async (req, res, next) => {
 export const getUserIssues = async (req, res, next) => {
   try {
     // For /me/issues route, use the authenticated user's ID
-    // For /:id/issues route, use the param ID (if user is admin/authority)
+    // For /:id/issues route, use the param ID (if user is authority)
     const userId = req.params.id || req.user?._id || req.user?.id;
     
     if (!userId) {

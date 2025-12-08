@@ -8,8 +8,10 @@ import {
   toggleUpvote,
   subscribeToIssue,
   addComment,
-  getComments
+  getComments,
+  deleteIssue
 } from '../controllers/issueController.js';
+import { deleteComment } from '../controllers/commentController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
 
@@ -26,7 +28,17 @@ const createIssueValidation = [
 
 const updateStatusValidation = [
   body('status').isIn(['reported', 'acknowledged', 'in_progress', 'resolved', 'closed']).withMessage('Invalid status'),
-  body('note').optional().trim()
+  body('status_description')
+    .optional()
+    .custom((value) => {
+      // If provided, must be at least 10 characters after trimming
+      if (value !== undefined && value !== null && String(value).trim().length > 0) {
+        if (String(value).trim().length < 10) {
+          throw new Error('Status description must be at least 10 characters when provided');
+        }
+      }
+      return true;
+    })
 ];
 
 const commentValidation = [
@@ -43,8 +55,11 @@ router.post('/', authenticate, upload.array('images', 5), createIssueValidation,
 router.patch('/:id/upvote', authenticate, toggleUpvote);
 router.patch('/:id/subscribe', authenticate, subscribeToIssue);
 router.post('/:id/comments', authenticate, commentValidation, addComment);
+router.delete('/:id', authenticate, deleteIssue);
+router.delete('/:issueId/comments/:id', authenticate, deleteComment);
 
-// Authority/Admin routes
-router.patch('/:id/status', authenticate, authorize('authority', 'admin'), updateStatusValidation, updateIssueStatus);
+// Authority routes - status update with required description and optional images
+// Users can also update status but only to 'reported' or 'closed' (handled in controller)
+router.patch('/:id/status', authenticate, upload.array('status_images', 4), updateStatusValidation, updateIssueStatus);
 
 export default router;

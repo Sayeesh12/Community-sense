@@ -10,12 +10,6 @@ dotenv.config();
 // Demo users
 const demoUsers = [
   {
-    name: 'Admin User',
-    email: 'admin@civicsolve.test',
-    passwordHash: 'AdminPass123!', // Will be hashed by pre-save hook
-    role: 'admin'
-  },
-  {
     name: 'Authority User',
     email: 'authority@civicsolve.test',
     passwordHash: 'AuthPass123!',
@@ -307,6 +301,9 @@ async function seed() {
 }
 
 seed();
+
+
+
 
 
 

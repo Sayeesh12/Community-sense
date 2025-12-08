@@ -9,8 +9,11 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import AuthorityDashboard from './pages/AuthorityDashboard.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
 import ReportNew from './pages/ReportNew.jsx';
+import PostNotice from './pages/PostNotice.jsx';
+import NoticesPage from './pages/NoticesPage.jsx';
+import NoticeDetail from './pages/NoticeDetail.jsx';
+import EditNotice from './pages/EditNotice.jsx';
 
 function App() {
   const { user, logout } = useAuth();
@@ -32,15 +35,18 @@ function App() {
             <nav className="flex items-center gap-4" aria-label="Main navigation">
               <Link to="/" className="hover:text-teal-600 transition-colors">Home</Link>
               <Link to="/map" className="hover:text-teal-600 transition-colors">Map</Link>
+              <Link to="/notices" className="hover:text-teal-600 transition-colors">Notices</Link>
               
               {user ? (
                 <>
-                  <Link to="/dashboard" className="hover:text-teal-600 transition-colors">My Reports</Link>
-                  {user.role === 'authority' && (
-                    <Link to="/authority" className="hover:text-teal-600 transition-colors">Authority</Link>
+                  {user.role === 'user' && (
+                    <Link to="/dashboard" className="hover:text-teal-600 transition-colors">My Reports</Link>
                   )}
-                  {user.role === 'admin' && (
-                    <Link to="/admin" className="hover:text-teal-600 transition-colors">Admin</Link>
+                  {user.role === 'authority' && (
+                    <>
+                      <Link to="/authority" className="hover:text-teal-600 transition-colors">Authority</Link>
+                      <Link to="/post-notice" className="hover:text-teal-600 transition-colors">Post Notice</Link>
+                    </>
                   )}
                   <span className="text-gray-600">Hello, {user.name}</span>
                   <button
@@ -66,6 +72,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/map" element={<MapPage />} />
+          <Route path="/notices" element={<NoticesPage />} />
           <Route path="/issues/:id" element={<IssueDetail />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
@@ -91,17 +98,28 @@ function App() {
           <Route
             path="/authority"
             element={
-              <ProtectedRoute roles={['authority', 'admin']}>
+              <ProtectedRoute roles={['authority']}>
                 <AuthorityDashboard />
               </ProtectedRoute>
             }
           />
           
           <Route
-            path="/admin"
+            path="/post-notice"
             element={
-              <ProtectedRoute roles={['admin']}>
-                <AdminDashboard />
+              <ProtectedRoute roles={['authority']}>
+                <PostNotice />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route path="/notices/:id" element={<NoticeDetail />} />
+          
+          <Route
+            path="/notices/:id/edit"
+            element={
+              <ProtectedRoute roles={['authority']}>
+                <EditNotice />
               </ProtectedRoute>
             }
           />

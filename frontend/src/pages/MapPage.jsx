@@ -5,18 +5,83 @@ import MapView from '../components/MapView.jsx';
 import IssueCard from '../components/IssueCard.jsx';
 import { Link } from 'react-router-dom';
 
+const radiusOptions = [
+  { value: 1, label: '1 km' },
+  { value: 5, label: '5 km' },
+  { value: 10, label: '10 km' },
+  { value: 25, label: '25 km' }
+];
+
 export default function MapPage() {
   const [bounds, setBounds] = useState(null);
   const [filters, setFilters] = useState({
     status: '',
     category: '',
-    search: ''
+    search: '',
+    nearby: false,
+    radius_km: 5
   });
   const [selectedIssue, setSelectedIssue] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState(null);
+
+  // Get user location when nearby filter is enabled
+  useEffect(() => {
+    if (filters.nearby && !userLocation && !locationError) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (error) => {
+            setLocationError(error.message);
+          }
+        );
+      } else {
+        setLocationError('Geolocation is not supported by your browser');
+      }
+    }
+  }, [filters.nearby, userLocation, locationError]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['issues', 'map', bounds, filters],
+    queryKey: ['issues', 'map', bounds, filters, userLocation],
     queryFn: async () => {
+      // Use nearby endpoint if nearby filter is enabled and location is available
+      if (filters.nearby && userLocation) {
+        const params = {
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+          radius_km: filters.radius_km,
+          sort: 'nearest'
+        };
+
+        if (filters.status) params.status = filters.status;
+        if (filters.category) params.category = filters.category;
+
+        const res = await api.get('/reports/nearby', { params });
+        // Transform nearby reports to match issues format
+        return {
+          issues: res.data.reports.map(report => ({
+            _id: report.id,
+            title: report.title,
+            description: report.short_desc,
+            category: report.category,
+            status: report.status,
+            location: {
+              type: 'Point',
+              coordinates: [report.lng, report.lat]
+            },
+            distance_km: report.distance_km,
+            createdAt: report.created_at
+          })),
+          pagination: { total: res.data.reports.length }
+        };
+      }
+
+      // Use regular issues endpoint
       const params = {
         page: 1,
         perPage: 100
@@ -33,7 +98,7 @@ export default function MapPage() {
       const res = await api.get('/issues', { params });
       return res.data;
     },
-    enabled: !!bounds || Object.values(filters).some(v => v)
+    enabled: (filters.nearby ? !!userLocation : !!bounds) || Object.values(filters).some(v => v && v !== false)
   });
 
   useEffect(() => {
@@ -63,11 +128,50 @@ export default function MapPage() {
           <h2 className="text-xl font-bold mb-4">Filters</h2>
           <div className="space-y-4">
             <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filters.nearby}
+                  onChange={(e) => {
+                    handleFilterChange('nearby', e.target.checked);
+                    if (!e.target.checked) {
+                      setUserLocation(null);
+                      setLocationError(null);
+                    }
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm font-medium">Show Nearby Issues</span>
+              </label>
+              {filters.nearby && (
+                <div className="mt-2 ml-6">
+                  {locationError ? (
+                    <p className="text-xs text-red-600 mb-2">{locationError}</p>
+                  ) : userLocation ? (
+                    <p className="text-xs text-gray-600 mb-2">Location detected</p>
+                  ) : (
+                    <p className="text-xs text-gray-600 mb-2">Detecting location...</p>
+                  )}
+                  <select
+                    className="input text-sm"
+                    value={filters.radius_km}
+                    onChange={(e) => handleFilterChange('radius_km', parseInt(e.target.value))}
+                    disabled={!userLocation}
+                  >
+                    {radiusOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            <div>
               <label className="block text-sm font-medium mb-1">Status</label>
               <select
                 className="input"
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
+                disabled={filters.nearby && !userLocation}
               >
                 <option value="">All</option>
                 <option value="reported">Reported</option>
@@ -83,6 +187,7 @@ export default function MapPage() {
                 className="input"
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
+                disabled={filters.nearby && !userLocation}
               >
                 <option value="">All</option>
                 <option value="pothole">Pothole</option>
@@ -93,16 +198,18 @@ export default function MapPage() {
                 <option value="other">Other</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Search</label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Search issues..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-              />
-            </div>
+            {!filters.nearby && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Search</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Search issues..."
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                />
+              </div>
+            )}
             <Link to="/report/new" className="btn-primary w-full text-center block">
               Report New Issue
             </Link>

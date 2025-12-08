@@ -40,12 +40,12 @@ CivicSolve is a MERN stack Community Issue Reporting System that lets residents 
 ## 2) Key Features
 
 * Register / login with JWT.
-* Roles: `user`, `authority`, `admin`.
+* Roles: `user`, `authority` (two roles only).
 * Create issue with images, category, severity, and geolocation.
-* Map discovery with clustering and heatmap.
+* Map discovery with clustering and nearby filtering.
 * Complaint lifecycle and status history.
 * Upvotes, comments, subscriptions, real-time notifications.
-* Admin analytics dashboard and user management.
+* Authority dashboard for managing issues.
 * Dockerized; seed script for demo data.
 
 ---
@@ -89,7 +89,7 @@ CivicSolve is a MERN stack Community Issue Reporting System that lets residents 
 
 ```js
 {
-  _id, name, email, passwordHash, role: 'user'|'authority'|'admin',
+  _id, name, email, passwordHash, role: 'user'|'authority',
   location?: { type: 'Point', coordinates: [lng, lat] }, createdAt
 }
 ```
@@ -123,25 +123,19 @@ CivicSolve is a MERN stack Community Issue Reporting System that lets residents 
 * `POST /api/auth/login`
 * `GET /api/auth/me`
 
-**Users (admin)**
-
-* `GET /api/users`
-* `PATCH /api/users/:id/role`
-
 **Issues**
 
 * `POST /api/issues` (multipart/form-data images)
 * `GET /api/issues` (filters: status, category, bbox/near, page, perPage)
 * `GET /api/issues/:id`
-* `PATCH /api/issues/:id/status` (authority/admin)
+* `PATCH /api/issues/:id/status` (authority can acknowledge/in_progress/resolve; users can only open/close their own issues)
 * `PATCH /api/issues/:id/upvote`
 * `POST /api/issues/:id/comments`
 * `GET /api/issues/:id/comments`
 
-**Admin**
+**Reports**
 
-* `GET /api/admin/stats`
-* `GET /api/admin/heatmap`
+* `GET /api/reports/nearby` (filter nearby issues by location and radius)
 
 **WebSocket events**
 
@@ -154,12 +148,11 @@ CivicSolve is a MERN stack Community Issue Reporting System that lets residents 
 **Routes**
 
 * `/` — Landing & discover
-* `/map` — Map & filters
+* `/map` — Map & filters (with nearby filtering option)
 * `/report/new` — Create report
 * `/issues/:id` — Issue detail
 * `/dashboard` — My reports
 * `/authority` — Authority dashboard
-* `/admin` — Admin console
 * `/auth/login`, `/auth/register`
 
 **Key components**
@@ -243,7 +236,7 @@ npm run dev
 ## 14) Analytics & Logging
 
 * Use `morgan` for request logging.
-* Admin stats endpoint aggregates counts and geospatial buckets for heatmap.
+* Geospatial queries enable nearby issue filtering and map-based discovery.
 
 ---
 
@@ -251,7 +244,6 @@ npm run dev
 
 **Demo credentials (local)**
 
-* Admin: `admin@civicsolve.test` / `AdminPass123!`
 * Authority: `authority@civicsolve.test` / `AuthPass123!`
 * User: `alice@civicsolve.test` / `UserPass123!`
 
@@ -262,9 +254,10 @@ npm run dev
 ## 16) How to Demo Interactively
 
 1. Login as `alice` (user) → create issue using map pin or geolocation.
-2. Login as `authority` (incognito) → acknowledge and change status to `in_progress`.
+2. Login as `authority` (incognito) → acknowledge and change status to `in_progress`, then resolve.
 3. See real-time notification in Alice's session (Socket.io).
-4. Login as admin → view heatmap and export CSV.
+4. Login as `alice` → close the resolved issue.
+5. Use the Map page with "Show Nearby Issues" filter to find issues near your location.
 
 ---
 
@@ -274,11 +267,11 @@ npm run dev
 
 * Built a full-stack MERN application to enable citizens to report and track civic issues with geolocation, image uploads, and real-time notifications using **React (Vite), Node.js (Express), MongoDB, and Socket.io**.
 
-* Implemented role-based access (user/authority/admin), complaint lifecycle management, and status history logging to streamline municipal response workflows.
+* Implemented role-based access (user/authority), complaint lifecycle management, and status history logging to streamline municipal response workflows. Users can open and close issues, while authority can acknowledge, mark in progress, resolve, and request user closure.
 
 * Designed a responsive, accessible UI with **TailwindCSS** and interactive maps (Leaflet), plus heatmap analytics and clustering for spatial insights.
 
-* Engineered backend with JWT authentication, secure file uploads, geospatial queries (2dsphere), pagination, and admin analytics; containerized the app with Docker and provided CI skeleton.
+* Engineered backend with JWT authentication, secure file uploads, geospatial queries (2dsphere), pagination, and nearby issue filtering; containerized the app with Docker and provided CI skeleton.
 
 * Added seed scripts, unit/integration tests (Jest + Supertest), and frontend tests (Vitest + RTL), improving reliability and demo readiness.
 
@@ -320,7 +313,7 @@ VITE_MAPBOX_TOKEN=
 * [x] Socket.io events & client integration.
 * [x] Frontend scaffolding (`main.jsx`, `App.jsx`), Tailwind, React Query, Leaflet map.
 * [x] Report form (Formik + Yup) with image previews and location picker.
-* [x] Admin dashboard with heatmap & analytics.
+* [x] Authority dashboard for managing issues.
 * [x] Dockerfiles, docker-compose, `.env.example`, seed script.
 * [x] Tests skeleton and GitHub Actions CI.
 
@@ -340,6 +333,8 @@ cd frontend && npm install && npm run dev
 cd backend && npm test
 cd frontend && npm test
 ```
+
+
 
 
 

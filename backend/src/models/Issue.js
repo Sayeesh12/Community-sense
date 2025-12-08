@@ -18,7 +18,15 @@ const statusHistorySchema = new mongoose.Schema({
   note: {
     type: String,
     trim: true
-  }
+  },
+  status_description: {
+    type: String,
+    trim: true
+  },
+  status_images: [{
+    type: String,
+    trim: true
+  }]
 }, { _id: false });
 
 const issueSchema = new mongoose.Schema({
@@ -105,6 +113,18 @@ const issueSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+  deleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deleted_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deleted_at: {
+    type: Date
   }
 }, {
   timestamps: true
@@ -117,6 +137,8 @@ issueSchema.index({ location: '2dsphere' });
 issueSchema.index({ status: 1, createdAt: -1 });
 issueSchema.index({ category: 1, status: 1 });
 issueSchema.index({ author: 1, createdAt: -1 });
+issueSchema.index({ deleted: 1, status: 1 });
+issueSchema.index({ deleted: 1, status: 1 });
 
 // Initialize status history on creation
 issueSchema.pre('save', function(next) {

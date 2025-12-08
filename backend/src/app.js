@@ -7,8 +7,9 @@ import { fileURLToPath } from 'url';
 
 import authRoutes from './routes/auth.js';
 import issueRoutes from './routes/issues.js';
-import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
+import noticeRoutes from './routes/notices.js';
+import reportRoutes from './routes/reports.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -57,7 +58,8 @@ export default function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/issues', issueRoutes);
   app.use('/api/users', userRoutes);
-  app.use('/api/admin', adminRoutes);
+  app.use('/api/notices', noticeRoutes);
+  app.use('/api/reports', reportRoutes);
 
   // Error handling
   app.use(errorHandler);

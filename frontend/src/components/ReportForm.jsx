@@ -3,6 +3,7 @@ import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import api from '../services/api.js';
 import { useNavigate } from 'react-router-dom';
+import LocationInput from './LocationInput.jsx';
 
 const categories = [
   { value: 'pothole', label: 'Pothole' },
@@ -97,23 +98,6 @@ export default function ReportForm({ initialLocation, onSuccess }) {
     setImagePreviews(newPreviews);
   };
 
-  const getCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          formik.setFieldValue('location', {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          alert('Unable to get your location: ' + error.message);
-        }
-      );
-    } else {
-      alert('Geolocation is not supported by your browser');
-    }
-  };
 
   return (
     <form onSubmit={formik.handleSubmit} className="space-y-6" aria-label="Report issue form">
@@ -196,30 +180,14 @@ export default function ReportForm({ initialLocation, onSuccess }) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Location *
+          Location * (Where is the issue?)
         </label>
-        <div className="flex gap-2 mb-2">
-          <button
-            type="button"
-            onClick={getCurrentLocation}
-            className="btn-secondary text-sm"
-          >
-            Use My Location
-          </button>
-          {formik.values.location.lat && (
-            <span className="text-sm text-gray-600 self-center">
-              Lat: {formik.values.location.lat.toFixed(4)}, 
-              Lng: {formik.values.location.lng.toFixed(4)}
-            </span>
-          )}
-        </div>
-        {formik.touched.location && formik.errors.location && (
-          <p className="mt-1 text-sm text-red-600" role="alert">
-            {typeof formik.errors.location === 'string' 
-              ? formik.errors.location 
-              : 'Location is required'}
-          </p>
-        )}
+        <LocationInput
+          value={formik.values.location}
+          onChange={(location) => formik.setFieldValue('location', location)}
+          error={formik.errors.location}
+          touched={formik.touched.location}
+        />
       </div>
 
       <div>

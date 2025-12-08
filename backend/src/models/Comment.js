@@ -23,6 +23,18 @@ const commentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
     index: true
+  },
+  deleted: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  deleted_by: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  deleted_at: {
+    type: Date
   }
 }, {
   timestamps: true
