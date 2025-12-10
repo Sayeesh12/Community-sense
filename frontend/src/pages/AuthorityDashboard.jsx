@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api.js';
 import IssueCard from '../components/IssueCard.jsx';
+import IssueStatusUpdateForm from '../components/IssueStatusUpdateForm.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function AuthorityDashboard() {
@@ -10,6 +11,7 @@ export default function AuthorityDashboard() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('reported');
   const [activeTab, setActiveTab] = useState('issues'); // 'issues' or 'notices'
+  const [updatingIssueId, setUpdatingIssueId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -23,23 +25,22 @@ export default function AuthorityDashboard() {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ issueId, status }) => api.patch(`/issues/${issueId}/status`, { status }),
+    mutationFn: ({ issueId, formData }) => api.patch(`/issues/${issueId}/status`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries(['issues', 'authority']);
+      setUpdatingIssueId(null);
     }
   });
 
   const { data: myNotices, isLoading: noticesLoading } = useQuery({
     queryKey: ['notices', 'my', user?.id],
     queryFn: async () => {
-      const res = await api.get('/notices', {
+      const res = await api.get('/notices/my', {
         params: { page: 1, perPage: 100 }
       });
-      // Filter to show only notices created by current user
-      return res.data.notices.filter(notice => {
-        const createdById = notice.created_by?._id || notice.created_by;
-        return createdById === user?.id;
-      });
+      return res.data.notices; // Extract the notices array from the response
     },
     enabled: !!user && activeTab === 'notices'
   });
@@ -51,8 +52,16 @@ export default function AuthorityDashboard() {
     }
   });
 
-  const handleStatusChange = (issueId, newStatus) => {
-    statusMutation.mutate({ issueId, status: newStatus });
+  const handleStatusChange = (issueId) => {
+    setUpdatingIssueId(issueId);
+  };
+
+  const handleStatusUpdateSuccess = (updatedIssue) => {
+    // The mutation onSuccess will handle closing the form and invalidating queries
+  };
+
+  const handleCancelStatusUpdate = () => {
+    setUpdatingIssueId(null);
   };
 
   const handleDeleteNotice = (noticeId) => {
@@ -117,30 +126,41 @@ export default function AuthorityDashboard() {
               {data.issues.map(issue => (
                 <div key={issue._id} className="card">
                   <IssueCard issue={issue} />
-                  <div className="mt-4 flex gap-2">
-                    {issue.status === 'reported' && (
-                      <button
-                        onClick={() => handleStatusChange(issue._id, 'acknowledged')}
-                        className="btn-primary text-sm"
-                      >
-                        Acknowledge
-                      </button>
-                    )}
-                    {issue.status === 'acknowledged' && (
-                      <button
-                        onClick={() => handleStatusChange(issue._id, 'in_progress')}
-                        className="btn-primary text-sm"
-                      >
-                        Start Work
-                      </button>
-                    )}
-                    {issue.status === 'in_progress' && (
-                      <button
-                        onClick={() => handleStatusChange(issue._id, 'resolved')}
-                        className="btn-primary text-sm"
-                      >
-                        Mark Resolved
-                      </button>
+                  <div className="mt-4">
+                    {updatingIssueId === issue._id ? (
+                      <IssueStatusUpdateForm
+                        issueId={issue._id}
+                        currentStatus={issue.status}
+                        onSuccess={handleStatusUpdateSuccess}
+                        onCancel={handleCancelStatusUpdate}
+                      />
+                    ) : (
+                      <div className="flex gap-2">
+                        {issue.status === 'reported' && (
+                          <button
+                            onClick={() => handleStatusChange(issue._id)}
+                            className="btn-primary text-sm"
+                          >
+                            Update Status
+                          </button>
+                        )}
+                        {issue.status === 'acknowledged' && (
+                          <button
+                            onClick={() => handleStatusChange(issue._id)}
+                            className="btn-primary text-sm"
+                          >
+                            Update Status
+                          </button>
+                        )}
+                        {issue.status === 'in_progress' && (
+                          <button
+                            onClick={() => handleStatusChange(issue._id)}
+                            className="btn-primary text-sm"
+                          >
+                            Update Status
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>

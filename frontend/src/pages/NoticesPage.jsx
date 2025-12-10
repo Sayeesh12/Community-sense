@@ -53,7 +53,7 @@ export default function NoticesPage() {
     queryKey: ['notices', 'nearby', location, filters],
     queryFn: async () => {
       if (!location) return { notices: [] };
-      
+
       const params = {
         lat: location.lat,
         lng: location.lng,
@@ -61,13 +61,16 @@ export default function NoticesPage() {
         page: 1,
         perPage: 50
       };
-      
+
       if (filters.category) params.category = filters.category;
 
       const res = await api.get('/notices', { params });
       return res.data;
     },
-    enabled: !!location
+    enabled: !!location,
+    // Refetch every 30 seconds to show notices that become active
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false
   });
 
   const upvoteMutation = useMutation({

@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { createNotice, getNotices, getNotice, updateNotice, deleteNotice, toggleUpvote } from '../controllers/noticeController.js';
+import { createNotice, getNotices, getMyNotices, getNotice, updateNotice, deleteNotice, toggleUpvote } from '../controllers/noticeController.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
 
@@ -28,6 +28,7 @@ const updateNoticeValidation = [
 
 // Public routes - anyone can view notices
 router.get('/', getNotices);
+router.get('/my', authenticate, authorize('authority'), getMyNotices);
 router.get('/:id', getNotice);
 
 // Authenticated routes
