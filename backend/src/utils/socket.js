@@ -5,7 +5,7 @@ let io = null;
 export const setupSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: process.env.FRONTEND_URL || 'https://community-sense-frontend.onrender.com',
       methods: ['GET', 'POST']
     }
   });
